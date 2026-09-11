@@ -1,33 +1,12 @@
 'use strict';
 
-/*
- * =====================================================
- * GOOGLE SHEETS VOICE INPUT
- * CENTRAL GITHUB APPLICATION
- * =====================================================
- *
- * IMPORTANT:
- *
- * This application NEVER talks directly to Google Sheets.
- *
- * Communication:
- *
- * Apps Script Sidebar
- *        ↕
- * window.postMessage()
- *        ↕
- * GitHub Voice App
- *
- * Apps Script remains responsible for writing
- * the final text into Google Sheets.
- */
-
 
 /* =====================================================
- * CONFIGURATION
+ * GOOGLE SHEETS VOICE INPUT
  * ===================================================== */
 
-const GITHUB_ORIGIN = window.location.origin;
+const GITHUB_ORIGIN =
+  window.location.origin;
 
 
 /* =====================================================
@@ -46,39 +25,62 @@ let openerWindow = null;
 
 
 /* =====================================================
- * DOM ELEMENTS
+ * DOM
  * ===================================================== */
 
 const startButton =
-  document.getElementById('startButton');
+  document.getElementById(
+    'startButton'
+  );
 
 const stopButton =
-  document.getElementById('stopButton');
+  document.getElementById(
+    'stopButton'
+  );
+
+const saveButton =
+  document.getElementById(
+    'saveButton'
+  );
 
 const transcriptBox =
-  document.getElementById('transcript');
+  document.getElementById(
+    'transcript'
+  );
 
 const targetCell =
-  document.getElementById('targetCell');
+  document.getElementById(
+    'targetCell'
+  );
 
 const status =
-  document.getElementById('status');
+  document.getElementById(
+    'status'
+  );
 
 const statusDescription =
-  document.getElementById('statusDescription');
+  document.getElementById(
+    'statusDescription'
+  );
 
 const statusDot =
-  document.getElementById('statusDot');
+  document.getElementById(
+    'statusDot'
+  );
 
 const browserWarning =
-  document.getElementById('browserWarning');
+  document.getElementById(
+    'browserWarning'
+  );
 
 const connectionStatus =
-  document.getElementById('connectionStatus');
+  document.getElementById(
+    'connectionStatus'
+  );
 
 
 /* =====================================================
- * SPEECH RECOGNITION
+ * SPEECH API
  * ===================================================== */
 
 const SpeechRecognition =
@@ -87,7 +89,7 @@ const SpeechRecognition =
 
 
 /* =====================================================
- * STATUS UI
+ * STATUS
  * ===================================================== */
 
 function setStatus(
@@ -96,7 +98,8 @@ function setStatus(
   state = 'normal'
 ) {
 
-  status.textContent = title;
+  status.textContent =
+    title;
 
   statusDescription.textContent =
     description;
@@ -104,16 +107,37 @@ function setStatus(
   statusDot.className =
     'status-dot';
 
-  if (state === 'listening') {
-    statusDot.classList.add('listening');
+
+  if (
+    state === 'listening'
+  ) {
+
+    statusDot.classList.add(
+      'listening'
+    );
+
   }
 
-  if (state === 'success') {
-    statusDot.classList.add('success');
+
+  if (
+    state === 'success'
+  ) {
+
+    statusDot.classList.add(
+      'success'
+    );
+
   }
 
-  if (state === 'error') {
-    statusDot.classList.add('error');
+
+  if (
+    state === 'error'
+  ) {
+
+    statusDot.classList.add(
+      'error'
+    );
+
   }
 
 }
@@ -148,7 +172,7 @@ function hideWarning() {
 
 
 /* =====================================================
- * UPDATE TARGET CELL
+ * TARGET CELL
  * ===================================================== */
 
 function updateTargetCell(target) {
@@ -157,16 +181,19 @@ function updateTargetCell(target) {
     return;
   }
 
+
   if (!target.ok) {
 
     setStatus(
       'Selection unavailable',
-      target.error || 'Could not detect selected cell.',
+      target.error ||
+        'Could not detect selected cell.',
       'error'
     );
 
     return;
   }
+
 
   currentTarget =
     target;
@@ -193,22 +220,7 @@ function updateTargetCell(target) {
 
 /* =====================================================
  * SEND MESSAGE TO APPS SCRIPT
- * =====================================================
- *
- * IMPORTANT:
- *
- * We cannot safely hard-code the Apps Script
- * sidebar origin because Apps Script HTML can
- * run from Google's sandboxed origin.
- *
- * Therefore:
- *
- * - the receiver validates event.origin
- * - we use "*" as targetOrigin
- *
- * The Apps Script sidebar only accepts messages
- * whose origin is our exact GitHub origin.
- */
+ * ===================================================== */
 
 function sendToAppsScript(message) {
 
@@ -223,7 +235,8 @@ function sendToAppsScript(message) {
       'error'
     );
 
-    return;
+    return false;
+
   }
 
 
@@ -232,28 +245,19 @@ function sendToAppsScript(message) {
     '*'
   );
 
+
+  return true;
+
 }
 
 
 /* =====================================================
- * RECEIVE MESSAGES FROM APPS SCRIPT
+ * RECEIVE APPS SCRIPT MESSAGES
  * ===================================================== */
 
 window.addEventListener(
   'message',
   function(event) {
-
-    /*
-     * IMPORTANT:
-     *
-     * We only accept messages from the
-     * Google Apps Script/sidebar window
-     * after the initial handshake.
-     *
-     * For the initial handshake we accept the
-     * message because it is received from the
-     * window that opened this application.
-     */
 
     if (!event.data) {
       return;
@@ -265,18 +269,13 @@ window.addEventListener(
 
 
     /* -----------------------------------------------
-     * INITIAL SHEET CONNECTION
+     * INITIAL CONNECTION
      * ----------------------------------------------- */
 
     if (
       message.type ===
       'VOICE_SHEET_INIT'
     ) {
-
-      /*
-       * Remember the exact window that sent
-       * the initialization message.
-       */
 
       openerWindow =
         event.source;
@@ -287,14 +286,14 @@ window.addEventListener(
       );
 
 
-      connectionStatus.textContent =
-        'Connected to Google Sheet';
-
-
       setStatus(
         'Ready',
         'Click Start and speak naturally.'
       );
+
+
+      connectionStatus.textContent =
+        'Connected to Google Sheet';
 
 
       return;
@@ -303,19 +302,13 @@ window.addEventListener(
 
 
     /* -----------------------------------------------
-     * CELL SELECTION CHANGED
+     * CELL CHANGED
      * ----------------------------------------------- */
 
     if (
       message.type ===
       'VOICE_SELECTION_CHANGED'
     ) {
-
-      /*
-       * Make sure this message comes from
-       * the same Apps Script window that
-       * initialized the application.
-       */
 
       if (
         openerWindow &&
@@ -336,12 +329,93 @@ window.addEventListener(
 
     }
 
+
+    /* -----------------------------------------------
+     * SAVE SUCCESS
+     * ----------------------------------------------- */
+
+    if (
+      message.type ===
+      'VOICE_SAVE_SUCCESS'
+    ) {
+
+      setStatus(
+        'Saved successfully!',
+        `${message.sheetName}!${message.a1}`,
+        'success'
+      );
+
+
+      saveButton.disabled =
+        true;
+
+
+      startButton.disabled =
+        true;
+
+
+      stopButton.disabled =
+        true;
+
+
+      /*
+       * Wait a moment so the user can see
+       * "Saved successfully!"
+       */
+
+      setTimeout(
+        function() {
+
+          /*
+           * Return to Google Sheet.
+           *
+           * This closes the popup that was
+           * opened from the Sheet sidebar.
+           */
+
+          window.close();
+
+        },
+        800
+      );
+
+
+      return;
+
+    }
+
+
+    /* -----------------------------------------------
+     * SAVE ERROR
+     * ----------------------------------------------- */
+
+    if (
+      message.type ===
+      'VOICE_SAVE_ERROR'
+    ) {
+
+      saveButton.disabled =
+        false;
+
+
+      setStatus(
+        'Save failed',
+        message.error ||
+          'Could not save to Google Sheets.',
+        'error'
+      );
+
+
+      return;
+
+    }
+
   }
 );
 
 
 /* =====================================================
- * INITIALIZE SPEECH RECOGNITION
+ * SPEECH RECOGNITION
  * ===================================================== */
 
 function initializeSpeechRecognition() {
@@ -374,17 +448,9 @@ function initializeSpeechRecognition() {
     new SpeechRecognition();
 
 
-  /*
-   * Recognize one speech session.
-   */
-
   recognition.continuous =
     false;
 
-
-  /*
-   * Show partial results.
-   */
 
   recognition.interimResults =
     true;
@@ -393,12 +459,6 @@ function initializeSpeechRecognition() {
   recognition.maxAlternatives =
     1;
 
-
-  /*
-   * Indian English.
-   *
-   * Change to hi-IN if required.
-   */
 
   recognition.lang =
     'en-IN';
@@ -421,6 +481,10 @@ function initializeSpeechRecognition() {
 
       stopButton.disabled =
         false;
+
+
+      saveButton.disabled =
+        true;
 
 
       setStatus(
@@ -570,7 +634,7 @@ function initializeSpeechRecognition() {
 
 
   /* -----------------------------------------------
-   * END
+   * RECOGNITION ENDED
    * ----------------------------------------------- */
 
   recognition.onend =
@@ -592,41 +656,38 @@ function initializeSpeechRecognition() {
         finalTranscript.trim();
 
 
-      if (!text) {
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT save automatically.
+       */
+
+      if (text) {
+
+        saveButton.disabled =
+          false;
+
+
+        setStatus(
+          'Ready to save',
+          'Review the text, then click Save to Google Sheet.'
+        );
+
+      } else {
+
+        saveButton.disabled =
+          true;
+
 
         setStatus(
           'Ready',
           'No text was recognized.'
         );
 
-        return;
-
       }
 
-
-      /*
-       * Speech recognition succeeded.
-       *
-       * Send text back to Apps Script.
-       */
-
-      setStatus(
-        'Saving...',
-        'Writing recognized text into the selected cell.'
-      );
-
-
-      sendToAppsScript({
-
-        type:
-          'VOICE_RESULT',
-
-        text:
-          text
-
-      });
-
     };
+
 
 
   return true;
@@ -635,7 +696,7 @@ function initializeSpeechRecognition() {
 
 
 /* =====================================================
- * START RECOGNITION
+ * START
  * ===================================================== */
 
 function startRecognition() {
@@ -653,16 +714,16 @@ function startRecognition() {
   }
 
 
-  /*
-   * Clear previous result.
-   */
-
   finalTranscript =
     '';
 
 
   transcriptBox.value =
     '';
+
+
+  saveButton.disabled =
+    true;
 
 
   try {
@@ -689,7 +750,7 @@ function startRecognition() {
 
 
 /* =====================================================
- * STOP RECOGNITION
+ * STOP
  * ===================================================== */
 
 function stopRecognition() {
@@ -707,7 +768,78 @@ function stopRecognition() {
 
 
 /* =====================================================
- * BUTTON EVENTS
+ * SAVE
+ * ===================================================== */
+
+function saveVoiceText() {
+
+  const text =
+    finalTranscript.trim();
+
+
+  if (!text) {
+
+    setStatus(
+      'Nothing to save',
+      'Please speak something first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  if (
+    !openerWindow ||
+    openerWindow.closed
+  ) {
+
+    setStatus(
+      'Connection lost',
+      'Close this window and open Voice Input again.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  /*
+   * Disable button immediately so the
+   * user cannot accidentally save twice.
+   */
+
+  saveButton.disabled =
+    true;
+
+
+  startButton.disabled =
+    true;
+
+
+  setStatus(
+    'Saving...',
+    'Writing text into the selected cell.'
+  );
+
+
+  sendToAppsScript({
+
+    type:
+      'VOICE_RESULT',
+
+    text:
+      text
+
+  });
+
+}
+
+
+/* =====================================================
+ * BUTTONS
  * ===================================================== */
 
 startButton.addEventListener(
@@ -722,15 +854,17 @@ stopButton.addEventListener(
 );
 
 
+saveButton.addEventListener(
+  'click',
+  saveVoiceText
+);
+
+
 /* =====================================================
- * APPLICATION STARTUP
+ * STARTUP
  * ===================================================== */
 
 (function boot() {
-
-  /*
-   * Browser check.
-   */
 
   if (!SpeechRecognition) {
 
@@ -749,11 +883,6 @@ stopButton.addEventListener(
   }
 
 
-  /*
-   * Check that this page was opened
-   * from another window.
-   */
-
   if (
     window.opener &&
     !window.opener.closed
@@ -764,17 +893,8 @@ stopButton.addEventListener(
 
 
     /*
-     * IMPORTANT:
-     *
-     * Do NOT use GITHUB_ORIGIN as the target.
-     *
-     * The receiver is the Apps Script sidebar,
-     * which has a different origin.
-     *
-     * "*" is used for the initial handshake.
-     *
-     * The Apps Script sidebar validates that
-     * the message came from our GitHub origin.
+     * Tell Apps Script that the voice
+     * application is ready.
      */
 
     openerWindow.postMessage(
