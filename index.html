@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8">
 
   <meta
@@ -10,25 +8,14 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>
-    Google Sheets Voice Input
-  </title>
+  <title>Google Sheets Voice Input</title>
 
-  <link
-    rel="stylesheet"
-    href="style.css"
-  >
-
+  <link rel="stylesheet" href="style.css">
 </head>
-
 
 <body>
 
-
   <main class="app">
-
-
-    <!-- HEADER -->
 
     <header class="header">
 
@@ -37,28 +24,18 @@
       </div>
 
       <div>
-
-        <h1>
-          Voice Input
-        </h1>
-
-        <p>
-          Google Sheets voice entry
-        </p>
-
+        <h1>Voice Input</h1>
+        <p>Google Sheets voice entry</p>
       </div>
 
     </header>
 
-
-    <!-- TARGET CELL -->
 
     <section class="target-card">
 
       <span class="target-label">
         CURRENT CELL
       </span>
-
 
       <strong id="targetCell">
         Detecting...
@@ -67,8 +44,6 @@
     </section>
 
 
-    <!-- STATUS -->
-
     <section class="status-card">
 
       <div
@@ -76,31 +51,24 @@
         class="status-dot"
       ></div>
 
-
       <div>
-
         <strong id="status">
           Ready
         </strong>
 
-
         <p id="statusDescription">
           Click Start and speak naturally.
         </p>
-
       </div>
 
     </section>
 
-
-    <!-- TRANSCRIPT -->
 
     <section class="transcript-card">
 
       <label for="transcript">
         Recognized text
       </label>
-
 
       <textarea
         id="transcript"
@@ -111,8 +79,6 @@
     </section>
 
 
-    <!-- CONTROLS -->
-
     <section class="controls">
 
       <button
@@ -120,11 +86,8 @@
         class="primary-button"
         type="button"
       >
-
         🎤 Start
-
       </button>
-
 
       <button
         id="stopButton"
@@ -132,29 +95,11 @@
         type="button"
         disabled
       >
-
         ■ Stop
-
       </button>
 
     </section>
 
-
-    <!-- SAVE -->
-
-    <button
-      id="saveButton"
-      class="save-button"
-      type="button"
-      disabled
-    >
-
-      💾 Save to Google Sheet
-
-    </button>
-
-
-    <!-- WARNING -->
 
     <div
       id="browserWarning"
@@ -162,24 +107,16 @@
     ></div>
 
 
-    <!-- CONNECTION -->
-
     <div
       id="connectionStatus"
       class="connection-status"
     >
-
       Connecting to Google Sheet...
-
     </div>
-
 
   </main>
 
-
   <script src="script.js"></script>
 
-
 </body>
-
 </html>
