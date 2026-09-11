@@ -10,7 +10,9 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Google Sheets Voice Input</title>
+  <title>
+    Google Sheets Voice Input
+  </title>
 
   <link
     rel="stylesheet"
@@ -21,6 +23,7 @@
 
 
 <body>
+
 
   <main class="app">
 
@@ -48,13 +51,14 @@
     </header>
 
 
-    <!-- CURRENT CELL -->
+    <!-- TARGET CELL -->
 
     <section class="target-card">
 
       <span class="target-label">
         CURRENT CELL
       </span>
+
 
       <strong id="targetCell">
         Detecting...
@@ -72,11 +76,13 @@
         class="status-dot"
       ></div>
 
+
       <div>
 
         <strong id="status">
           Ready
         </strong>
+
 
         <p id="statusDescription">
           Click Start and speak naturally.
@@ -94,6 +100,7 @@
       <label for="transcript">
         Recognized text
       </label>
+
 
       <textarea
         id="transcript"
@@ -113,7 +120,9 @@
         class="primary-button"
         type="button"
       >
+
         🎤 Start
+
       </button>
 
 
@@ -123,7 +132,9 @@
         type="button"
         disabled
       >
+
         ■ Stop
+
       </button>
 
     </section>
@@ -137,7 +148,9 @@
       type="button"
       disabled
     >
+
       💾 Save to Google Sheet
+
     </button>
 
 
@@ -155,7 +168,9 @@
       id="connectionStatus"
       class="connection-status"
     >
+
       Connecting to Google Sheet...
+
     </div>
 
 
@@ -163,6 +178,7 @@
 
 
   <script src="script.js"></script>
+
 
 </body>
 
