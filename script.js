@@ -1112,37 +1112,142 @@ stopButton.disabled = true;
 
 saveButton.disabled = true;
 
+/* =========================================================
+   INITIALIZE FROM GOOGLE SHEETS
+   ========================================================= */
+
+function initializeFromUrl() {
+
+  try {
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const encodedTarget =
+      params.get('target');
+
+
+    /*
+     * If target was supplied by Sidebar,
+     * load it immediately.
+     */
+    if (encodedTarget) {
+
+      const target =
+        JSON.parse(
+          decodeURIComponent(
+            encodedTarget
+          )
+        );
+
+
+      updateTargetCell(
+        target
+      );
+
+
+      /*
+       * Store Google Sheets window.
+       */
+      if (window.opener) {
+
+        openerWindow =
+          window.opener;
+
+      }
+
+
+      connectionStatus.textContent =
+        'Connected to Google Sheet';
+
+
+      setStatus(
+        'Ready',
+        'Select a cell and click Start.',
+        'ready'
+      );
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      'Unable to read target from URL:',
+      error
+    );
+
+  }
+
+}
+
 
 /* =========================================================
-   TELL GOOGLE SHEETS SIDEBAR WE ARE READY
+   GOOGLE SHEETS HANDSHAKE
+   ========================================================= */
+
+function notifyGoogleSheets() {
+
+  if (!window.opener) {
+    return;
+  }
+
+
+  openerWindow =
+    window.opener;
+
+
+  openerWindow.postMessage(
+    {
+      type:
+        'VOICE_APP_READY'
+    },
+    '*'
+  );
+
+}
+
+
+/* =========================================================
+   STARTUP
    ========================================================= */
 
 window.addEventListener(
   'load',
   function() {
 
+    /*
+     * First load target directly from URL.
+     */
+    initializeFromUrl();
+
+
+    /*
+     * Then notify Apps Script.
+     */
+    notifyGoogleSheets();
+
+
+    /*
+     * Send handshake again.
+     *
+     * This helps if the sidebar wasn't ready
+     * during the first message.
+     */
     setTimeout(
-      function() {
-
-        if (window.opener) {
-
-          openerWindow =
-            window.opener;
+      notifyGoogleSheets,
+      500
+    );
 
 
-          openerWindow.postMessage(
-            {
-              type:
-                'VOICE_APP_READY'
-            },
-            '*'
-          );
-
-        }
-
-      },
-      100
+    setTimeout(
+      notifyGoogleSheets,
+      1500
     );
 
   }
 );
+
