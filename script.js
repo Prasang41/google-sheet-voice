@@ -1,12 +1,33 @@
 'use strict';
 
+/*
+ * =====================================================
+ * GOOGLE SHEETS VOICE INPUT
+ * CENTRAL GITHUB APPLICATION
+ * =====================================================
+ *
+ * IMPORTANT:
+ *
+ * This application NEVER talks directly to Google Sheets.
+ *
+ * Communication:
+ *
+ * Apps Script Sidebar
+ *        ↕
+ * window.postMessage()
+ *        ↕
+ * GitHub Voice App
+ *
+ * Apps Script remains responsible for writing
+ * the final text into Google Sheets.
+ */
+
 
 /* =====================================================
- * GOOGLE SHEETS VOICE INPUT
+ * CONFIGURATION
  * ===================================================== */
 
-const GITHUB_ORIGIN =
-  window.location.origin;
+const GITHUB_ORIGIN = window.location.origin;
 
 
 /* =====================================================
@@ -17,8 +38,6 @@ let recognition = null;
 
 let isListening = false;
 
-let isSaving = false;
-
 let finalTranscript = '';
 
 let currentTarget = null;
@@ -27,62 +46,39 @@ let openerWindow = null;
 
 
 /* =====================================================
- * DOM
+ * DOM ELEMENTS
  * ===================================================== */
 
 const startButton =
-  document.getElementById(
-    'startButton'
-  );
+  document.getElementById('startButton');
 
 const stopButton =
-  document.getElementById(
-    'stopButton'
-  );
-
-const saveButton =
-  document.getElementById(
-    'saveButton'
-  );
+  document.getElementById('stopButton');
 
 const transcriptBox =
-  document.getElementById(
-    'transcript'
-  );
+  document.getElementById('transcript');
 
 const targetCell =
-  document.getElementById(
-    'targetCell'
-  );
+  document.getElementById('targetCell');
 
 const status =
-  document.getElementById(
-    'status'
-  );
+  document.getElementById('status');
 
 const statusDescription =
-  document.getElementById(
-    'statusDescription'
-  );
+  document.getElementById('statusDescription');
 
 const statusDot =
-  document.getElementById(
-    'statusDot'
-  );
+  document.getElementById('statusDot');
 
 const browserWarning =
-  document.getElementById(
-    'browserWarning'
-  );
+  document.getElementById('browserWarning');
 
 const connectionStatus =
-  document.getElementById(
-    'connectionStatus'
-  );
+  document.getElementById('connectionStatus');
 
 
 /* =====================================================
- * SPEECH RECOGNITION SUPPORT
+ * SPEECH RECOGNITION
  * ===================================================== */
 
 const SpeechRecognition =
@@ -91,7 +87,7 @@ const SpeechRecognition =
 
 
 /* =====================================================
- * STATUS
+ * STATUS UI
  * ===================================================== */
 
 function setStatus(
@@ -100,8 +96,7 @@ function setStatus(
   state = 'normal'
 ) {
 
-  status.textContent =
-    title;
+  status.textContent = title;
 
   statusDescription.textContent =
     description;
@@ -109,37 +104,16 @@ function setStatus(
   statusDot.className =
     'status-dot';
 
-
-  if (
-    state === 'listening'
-  ) {
-
-    statusDot.classList.add(
-      'listening'
-    );
-
+  if (state === 'listening') {
+    statusDot.classList.add('listening');
   }
 
-
-  if (
-    state === 'success'
-  ) {
-
-    statusDot.classList.add(
-      'success'
-    );
-
+  if (state === 'success') {
+    statusDot.classList.add('success');
   }
 
-
-  if (
-    state === 'error'
-  ) {
-
-    statusDot.classList.add(
-      'error'
-    );
-
+  if (state === 'error') {
+    statusDot.classList.add('error');
   }
 
 }
@@ -174,7 +148,7 @@ function hideWarning() {
 
 
 /* =====================================================
- * CURRENT CELL
+ * UPDATE TARGET CELL
  * ===================================================== */
 
 function updateTargetCell(target) {
@@ -183,20 +157,16 @@ function updateTargetCell(target) {
     return;
   }
 
-
   if (!target.ok) {
 
     setStatus(
       'Selection unavailable',
-      target.error ||
-        'Could not detect selected cell.',
+      target.error || 'Could not detect selected cell.',
       'error'
     );
 
     return;
-
   }
-
 
   currentTarget =
     target;
@@ -223,7 +193,22 @@ function updateTargetCell(target) {
 
 /* =====================================================
  * SEND MESSAGE TO APPS SCRIPT
- * ===================================================== */
+ * =====================================================
+ *
+ * IMPORTANT:
+ *
+ * We cannot safely hard-code the Apps Script
+ * sidebar origin because Apps Script HTML can
+ * run from Google's sandboxed origin.
+ *
+ * Therefore:
+ *
+ * - the receiver validates event.origin
+ * - we use "*" as targetOrigin
+ *
+ * The Apps Script sidebar only accepts messages
+ * whose origin is our exact GitHub origin.
+ */
 
 function sendToAppsScript(message) {
 
@@ -238,8 +223,7 @@ function sendToAppsScript(message) {
       'error'
     );
 
-    return false;
-
+    return;
   }
 
 
@@ -248,19 +232,28 @@ function sendToAppsScript(message) {
     '*'
   );
 
-
-  return true;
-
 }
 
 
 /* =====================================================
- * RECEIVE MESSAGES
+ * RECEIVE MESSAGES FROM APPS SCRIPT
  * ===================================================== */
 
 window.addEventListener(
   'message',
   function(event) {
+
+    /*
+     * IMPORTANT:
+     *
+     * We only accept messages from the
+     * Google Apps Script/sidebar window
+     * after the initial handshake.
+     *
+     * For the initial handshake we accept the
+     * message because it is received from the
+     * window that opened this application.
+     */
 
     if (!event.data) {
       return;
@@ -272,13 +265,18 @@ window.addEventListener(
 
 
     /* -----------------------------------------------
-     * INITIAL CONNECTION
+     * INITIAL SHEET CONNECTION
      * ----------------------------------------------- */
 
     if (
       message.type ===
       'VOICE_SHEET_INIT'
     ) {
+
+      /*
+       * Remember the exact window that sent
+       * the initialization message.
+       */
 
       openerWindow =
         event.source;
@@ -289,14 +287,14 @@ window.addEventListener(
       );
 
 
+      connectionStatus.textContent =
+        'Connected to Google Sheet';
+
+
       setStatus(
         'Ready',
         'Click Start and speak naturally.'
       );
-
-
-      connectionStatus.textContent =
-        'Connected to Google Sheet';
 
 
       return;
@@ -305,13 +303,19 @@ window.addEventListener(
 
 
     /* -----------------------------------------------
-     * CELL CHANGED
+     * CELL SELECTION CHANGED
      * ----------------------------------------------- */
 
     if (
       message.type ===
       'VOICE_SELECTION_CHANGED'
     ) {
+
+      /*
+       * Make sure this message comes from
+       * the same Apps Script window that
+       * initialized the application.
+       */
 
       if (
         openerWindow &&
@@ -332,99 +336,15 @@ window.addEventListener(
 
     }
 
-
-    /* -----------------------------------------------
-     * SAVE SUCCESS
-     * ----------------------------------------------- */
-
-    if (
-      message.type ===
-      'VOICE_SAVE_SUCCESS'
-    ) {
-
-      isSaving =
-        false;
-
-
-      setStatus(
-        'Saved successfully!',
-        `${message.sheetName}!${message.a1}`,
-        'success'
-      );
-
-
-      saveButton.disabled =
-        true;
-
-      startButton.disabled =
-        true;
-
-      stopButton.disabled =
-        true;
-
-
-      /*
-       * Close the voice window after
-       * showing the success message.
-       */
-
-      setTimeout(
-        function() {
-
-          window.close();
-
-        },
-        800
-      );
-
-
-      return;
-
-    }
-
-
-    /* -----------------------------------------------
-     * SAVE ERROR
-     * ----------------------------------------------- */
-
-    if (
-      message.type ===
-      'VOICE_SAVE_ERROR'
-    ) {
-
-      isSaving =
-        false;
-
-
-      saveButton.disabled =
-        false;
-
-
-      startButton.disabled =
-        false;
-
-
-      setStatus(
-        'Save failed',
-        message.error ||
-          'Could not save to Google Sheets.',
-        'error'
-      );
-
-
-      return;
-
-    }
-
   }
 );
 
 
 /* =====================================================
- * CREATE SPEECH RECOGNITION
+ * INITIALIZE SPEECH RECOGNITION
  * ===================================================== */
 
-function createRecognition() {
+function initializeSpeechRecognition() {
 
   if (!SpeechRecognition) {
 
@@ -455,20 +375,15 @@ function createRecognition() {
 
 
   /*
-   * IMPORTANT
-   *
-   * continuous = TRUE
-   *
-   * The recognition session is intended to
-   * remain active while the user is listening.
+   * Recognize one speech session.
    */
 
   recognition.continuous =
-    true;
+    false;
 
 
   /*
-   * Show partial speech while speaking.
+   * Show partial results.
    */
 
   recognition.interimResults =
@@ -482,25 +397,22 @@ function createRecognition() {
   /*
    * Indian English.
    *
-   * For Hindi use:
-   *
-   * recognition.lang = 'hi-IN';
+   * Change to hi-IN if required.
    */
 
   recognition.lang =
     'en-IN';
 
 
-  /* ===================================================
-   * RECOGNITION START
-   * =================================================== */
+  /* -----------------------------------------------
+   * START
+   * ----------------------------------------------- */
 
   recognition.onstart =
     function() {
 
-      if (!isListening) {
-        return;
-      }
+      isListening =
+        true;
 
 
       startButton.disabled =
@@ -511,22 +423,18 @@ function createRecognition() {
         false;
 
 
-      saveButton.disabled =
-        false;
-
-
       setStatus(
         'Listening...',
-        'Keep speaking. Click Stop when you are finished.',
+        'Speak now.',
         'listening'
       );
 
     };
 
 
-  /* ===================================================
-   * RECOGNITION RESULT
-   * =================================================== */
+  /* -----------------------------------------------
+   * RESULT
+   * ----------------------------------------------- */
 
   recognition.onresult =
     function(event) {
@@ -565,10 +473,6 @@ function createRecognition() {
       }
 
 
-      /*
-       * Store FINAL text permanently.
-       */
-
       if (completedTranscript) {
 
         finalTranscript +=
@@ -576,10 +480,6 @@ function createRecognition() {
 
       }
 
-
-      /*
-       * Show final + current interim text.
-       */
 
       transcriptBox.value =
         (
@@ -590,227 +490,95 @@ function createRecognition() {
     };
 
 
-  /* ===================================================
-   * RECOGNITION ERROR
-   * =================================================== */
+  /* -----------------------------------------------
+   * ERROR
+   * ----------------------------------------------- */
 
   recognition.onerror =
     function(event) {
 
-      console.log(
-        'Speech recognition error:',
-        event.error
-      );
+      let message =
+        'Speech recognition error.';
 
 
-      /*
-       * These errors should not automatically
-       * cancel our listening state.
-       *
-       * The onend handler can restart recognition
-       * if the user has not clicked Stop or Save.
-       */
+      switch (event.error) {
 
-      if (
-        event.error ===
-        'not-allowed'
-      ) {
+        case 'not-allowed':
 
-        isListening =
-          false;
+          message =
+            'Microphone permission was denied. ' +
+            'Allow microphone access and try again.';
+
+          break;
 
 
-        setStatus(
-          'Microphone permission denied',
-          'Allow microphone access and click Start again.',
-          'error'
-        );
+        case 'no-speech':
+
+          message =
+            'No speech was detected. Please try again.';
+
+          break;
 
 
-        startButton.disabled =
-          false;
+        case 'audio-capture':
 
-        stopButton.disabled =
-          true;
+          message =
+            'No microphone was detected. Check your microphone.';
 
-        saveButton.disabled =
-          true;
+          break;
 
 
-        return;
+        case 'network':
 
-      }
+          message =
+            'The browser speech recognition service could not be reached.';
 
-
-      if (
-        event.error ===
-        'audio-capture'
-      ) {
-
-        isListening =
-          false;
+          break;
 
 
-        setStatus(
-          'Microphone unavailable',
-          'Check your microphone and click Start again.',
-          'error'
-        );
+        case 'aborted':
+
+          message =
+            'Speech recognition was stopped.';
+
+          break;
 
 
-        startButton.disabled =
-          false;
+        case 'language-not-supported':
 
-        stopButton.disabled =
-          true;
+          message =
+            'The selected recognition language is not supported.';
 
-
-        return;
-
-      }
+          break;
 
 
-      if (
-        event.error ===
-        'network'
-      ) {
+        default:
 
-        /*
-         * Do not turn off listening.
-         *
-         * onend() will attempt to restart.
-         */
-
-        setStatus(
-          'Reconnecting...',
-          'Speech recognition is reconnecting.'
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        event.error ===
-        'no-speech'
-      ) {
-
-        /*
-         * This is NOT a reason to stop.
-         *
-         * Keep listening.
-         */
-
-        setStatus(
-          'Still listening...',
-          'No speech detected. Keep speaking or click Stop.',
-          'listening'
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        event.error ===
-        'aborted'
-      ) {
-
-        /*
-         * If the user didn't intentionally stop,
-         * onend() can restart it.
-         */
-
-        return;
+          message =
+            `Speech recognition error: ${event.error}`;
 
       }
 
 
       setStatus(
-        'Recognition issue',
-        `Speech recognition reported: ${event.error}`,
+        'Recognition error',
+        message,
         'error'
       );
 
     };
 
 
-  /* ===================================================
-   * RECOGNITION END
-   * =================================================== */
+  /* -----------------------------------------------
+   * END
+   * ----------------------------------------------- */
 
   recognition.onend =
     function() {
 
-      /*
-       * IMPORTANT:
-       *
-       * If the user is STILL listening,
-       * automatically restart recognition.
-       *
-       * This prevents the browser from ending
-       * the user's voice session simply because
-       * one recognition session ended.
-       */
+      isListening =
+        false;
 
-      if (
-        isListening &&
-        !isSaving
-      ) {
-
-        setStatus(
-          'Listening...',
-          'Reconnecting microphone...',
-          'listening'
-        );
-
-
-        /*
-         * Small delay prevents Chrome from
-         * rejecting an immediate restart.
-         */
-
-        setTimeout(
-          function() {
-
-            if (
-              isListening &&
-              !isSaving
-            ) {
-
-              try {
-
-                recognition.start();
-
-              } catch (error) {
-
-                console.log(
-                  'Recognition restart:',
-                  error
-                );
-
-              }
-
-            }
-
-          },
-          250
-        );
-
-
-        return;
-
-      }
-
-
-      /*
-       * If we reach here, the user intentionally
-       * stopped or clicked Save.
-       */
 
       startButton.disabled =
         false;
@@ -820,37 +588,43 @@ function createRecognition() {
         true;
 
 
-      if (!isSaving) {
-
-        const text =
-          finalTranscript.trim();
+      const text =
+        finalTranscript.trim();
 
 
-        if (text) {
+      if (!text) {
 
-          saveButton.disabled =
-            false;
+        setStatus(
+          'Ready',
+          'No text was recognized.'
+        );
 
-
-          setStatus(
-            'Ready to save',
-            'Review the text, then click Save to Google Sheet.'
-          );
-
-        } else {
-
-          saveButton.disabled =
-            true;
-
-
-          setStatus(
-            'Ready',
-            'No text was recognized.'
-          );
-
-        }
+        return;
 
       }
+
+
+      /*
+       * Speech recognition succeeded.
+       *
+       * Send text back to Apps Script.
+       */
+
+      setStatus(
+        'Saving...',
+        'Writing recognized text into the selected cell.'
+      );
+
+
+      sendToAppsScript({
+
+        type:
+          'VOICE_RESULT',
+
+        text:
+          text
+
+      });
 
     };
 
@@ -861,49 +635,26 @@ function createRecognition() {
 
 
 /* =====================================================
- * START LISTENING
+ * START RECOGNITION
  * ===================================================== */
 
 function startRecognition() {
 
-  /*
-   * If an old recognition object exists,
-   * create a fresh one.
-   */
+  if (!recognition) {
 
-  if (recognition) {
+    if (
+      !initializeSpeechRecognition()
+    ) {
 
-    try {
-
-      recognition.abort();
-
-    } catch (error) {
-
-      console.log(error);
+      return;
 
     }
 
   }
 
 
-  recognition =
-    null;
-
-
   /*
-   * User has explicitly chosen Start.
-   */
-
-  isListening =
-    true;
-
-
-  isSaving =
-    false;
-
-
-  /*
-   * Clear old text.
+   * Clear previous result.
    */
 
   finalTranscript =
@@ -912,34 +663,6 @@ function startRecognition() {
 
   transcriptBox.value =
     '';
-
-
-  saveButton.disabled =
-    true;
-
-
-  startButton.disabled =
-    true;
-
-
-  stopButton.disabled =
-    false;
-
-
-  /*
-   * Create recognition.
-   */
-
-  if (
-    !createRecognition()
-  ) {
-
-    isListening =
-      false;
-
-    return;
-
-  }
 
 
   try {
@@ -954,18 +677,6 @@ function startRecognition() {
     );
 
 
-    isListening =
-      false;
-
-
-    startButton.disabled =
-      false;
-
-
-    stopButton.disabled =
-      true;
-
-
     setStatus(
       'Could not start',
       'Please wait a moment and try again.',
@@ -978,202 +689,19 @@ function startRecognition() {
 
 
 /* =====================================================
- * STOP
+ * STOP RECOGNITION
  * ===================================================== */
 
 function stopRecognition() {
 
-  /*
-   * IMPORTANT:
-   *
-   * Change isListening FIRST.
-   *
-   * This prevents onend() from automatically
-   * restarting recognition.
-   */
-
-  isListening =
-    false;
-
-
-  isSaving =
-    false;
-
-
-  startButton.disabled =
-    false;
-
-
-  stopButton.disabled =
-    true;
-
-
-  const text =
-    finalTranscript.trim();
-
-
-  if (text) {
-
-    saveButton.disabled =
-      false;
-
-
-    setStatus(
-      'Stopped',
-      'Recording stopped. Review the text or click Save.'
-    );
-
-  } else {
-
-    saveButton.disabled =
-      true;
-
-
-    setStatus(
-      'Stopped',
-      'No text was recognized.'
-    );
-
-  }
-
-
-  /*
-   * Now actually stop browser recognition.
-   */
-
-  if (recognition) {
-
-    try {
-
-      recognition.stop();
-
-    } catch (error) {
-
-      console.log(
-        'Stop recognition:',
-        error
-      );
-
-    }
-
-  }
-
-}
-
-
-/* =====================================================
- * SAVE
- * ===================================================== */
-
-function saveVoiceText() {
-
-  const text =
-    finalTranscript.trim();
-
-
-  if (!text) {
-
-    setStatus(
-      'Nothing to save',
-      'Please speak something first.',
-      'error'
-    );
-
-    return;
-
-  }
-
-
   if (
-    !openerWindow ||
-    openerWindow.closed
+    recognition &&
+    isListening
   ) {
 
-    setStatus(
-      'Connection lost',
-      'Close this window and open Voice Input again.',
-      'error'
-    );
-
-    return;
+    recognition.stop();
 
   }
-
-
-  /*
-   * IMPORTANT:
-   *
-   * Save means:
-   *
-   * 1. Stop listening
-   * 2. Prevent automatic restart
-   * 3. Send text to Apps Script
-   */
-
-  isListening =
-    false;
-
-
-  isSaving =
-    true;
-
-
-  startButton.disabled =
-    true;
-
-
-  stopButton.disabled =
-    true;
-
-
-  saveButton.disabled =
-    true;
-
-
-  /*
-   * Stop recognition if currently active.
-   */
-
-  if (recognition) {
-
-    try {
-
-      recognition.stop();
-
-    } catch (error) {
-
-      console.log(
-        'Save stop:',
-        error
-      );
-
-    }
-
-  }
-
-
-  setStatus(
-    'Saving...',
-    'Writing text into the selected cell.'
-  );
-
-
-  /*
-   * Send text to Apps Script.
-   *
-   * Apps Script will determine the current
-   * selected cell and write the text there.
-   */
-
-  sendToAppsScript({
-
-    type:
-      'VOICE_RESULT',
-
-    text:
-      text
-
-  });
 
 }
 
@@ -1194,20 +722,14 @@ stopButton.addEventListener(
 );
 
 
-saveButton.addEventListener(
-  'click',
-  saveVoiceText
-);
-
-
 /* =====================================================
- * START APPLICATION
+ * APPLICATION STARTUP
  * ===================================================== */
 
 (function boot() {
 
   /*
-   * Browser compatibility.
+   * Browser check.
    */
 
   if (!SpeechRecognition) {
@@ -1228,8 +750,8 @@ saveButton.addEventListener(
 
 
   /*
-   * We expect this page to have been opened
-   * from the Google Sheets Apps Script sidebar.
+   * Check that this page was opened
+   * from another window.
    */
 
   if (
@@ -1242,9 +764,17 @@ saveButton.addEventListener(
 
 
     /*
-     * Tell the Apps Script sidebar:
+     * IMPORTANT:
      *
-     * "The voice application is ready."
+     * Do NOT use GITHUB_ORIGIN as the target.
+     *
+     * The receiver is the Apps Script sidebar,
+     * which has a different origin.
+     *
+     * "*" is used for the initial handshake.
+     *
+     * The Apps Script sidebar validates that
+     * the message came from our GitHub origin.
      */
 
     openerWindow.postMessage(
