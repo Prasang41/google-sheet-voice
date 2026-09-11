@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -10,12 +12,20 @@
 
   <title>Google Sheets Voice Input</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
 </head>
+
 
 <body>
 
   <main class="app">
+
+
+    <!-- HEADER -->
 
     <header class="header">
 
@@ -24,12 +34,21 @@
       </div>
 
       <div>
-        <h1>Voice Input</h1>
-        <p>Google Sheets voice entry</p>
+
+        <h1>
+          Voice Input
+        </h1>
+
+        <p>
+          Google Sheets voice entry
+        </p>
+
       </div>
 
     </header>
 
+
+    <!-- CURRENT CELL -->
 
     <section class="target-card">
 
@@ -44,6 +63,8 @@
     </section>
 
 
+    <!-- STATUS -->
+
     <section class="status-card">
 
       <div
@@ -52,6 +73,7 @@
       ></div>
 
       <div>
+
         <strong id="status">
           Ready
         </strong>
@@ -59,10 +81,13 @@
         <p id="statusDescription">
           Click Start and speak naturally.
         </p>
+
       </div>
 
     </section>
 
+
+    <!-- TRANSCRIPT -->
 
     <section class="transcript-card">
 
@@ -79,6 +104,8 @@
     </section>
 
 
+    <!-- CONTROLS -->
+
     <section class="controls">
 
       <button
@@ -88,6 +115,7 @@
       >
         🎤 Start
       </button>
+
 
       <button
         id="stopButton"
@@ -101,11 +129,27 @@
     </section>
 
 
+    <!-- SAVE -->
+
+    <button
+      id="saveButton"
+      class="save-button"
+      type="button"
+      disabled
+    >
+      💾 Save to Google Sheet
+    </button>
+
+
+    <!-- WARNING -->
+
     <div
       id="browserWarning"
       class="warning hidden"
     ></div>
 
+
+    <!-- CONNECTION -->
 
     <div
       id="connectionStatus"
@@ -114,9 +158,12 @@
       Connecting to Google Sheet...
     </div>
 
+
   </main>
+
 
   <script src="script.js"></script>
 
 </body>
+
 </html>
