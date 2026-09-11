@@ -2,72 +2,122 @@
   box-sizing: border-box;
 }
 
+
 html,
 body {
+
   margin: 0;
+
   padding: 0;
+
   min-height: 100%;
+
   font-family:
     Inter,
     Arial,
     Helvetica,
     sans-serif;
+
   background: #f5f7fb;
+
   color: #172033;
+
 }
+
 
 body {
+
   display: flex;
+
   justify-content: center;
+
   align-items: flex-start;
+
   min-height: 100vh;
+
 }
+
 
 .app {
+
   width: 100%;
+
   max-width: 520px;
-  padding: 28px 20px 40px;
+
+  padding:
+    28px
+    20px
+    40px;
+
 }
 
 
-/* HEADER */
+/* =====================================================
+ * HEADER
+ * ===================================================== */
 
 .header {
+
   display: flex;
+
   align-items: center;
+
   gap: 14px;
+
   margin-bottom: 24px;
+
 }
 
+
 .logo {
+
   width: 54px;
+
   height: 54px;
 
   display: flex;
+
   align-items: center;
+
   justify-content: center;
 
   border-radius: 16px;
 
   background: #1a73e8;
+
   color: white;
 
   font-size: 27px;
+
 }
+
 
 .header h1 {
+
   margin: 0;
+
   font-size: 24px;
+
 }
+
 
 .header p {
-  margin: 4px 0 0;
+
+  margin:
+    4px
+    0
+    0;
+
   color: #6b7280;
+
   font-size: 14px;
+
 }
 
 
-/* CARDS */
+/* =====================================================
+ * CARDS
+ * ===================================================== */
 
 .target-card,
 .status-card,
@@ -81,16 +131,23 @@ body {
 
   margin-bottom: 16px;
 
-  border: 1px solid #e5e7eb;
+  border:
+    1px solid
+    #e5e7eb;
 
   box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.05);
+    0 4px 14px
+    rgba(0, 0, 0, 0.05);
+
 }
 
 
-/* TARGET */
+/* =====================================================
+ * TARGET CELL
+ * ===================================================== */
 
 .target-label {
+
   display: block;
 
   color: #6b7280;
@@ -102,17 +159,22 @@ body {
   letter-spacing: 0.08em;
 
   margin-bottom: 6px;
+
 }
+
 
 #targetCell {
 
   font-size: 20px;
 
   color: #1a73e8;
+
 }
 
 
-/* STATUS */
+/* =====================================================
+ * STATUS
+ * ===================================================== */
 
 .status-card {
 
@@ -121,7 +183,9 @@ body {
   align-items: center;
 
   gap: 12px;
+
 }
+
 
 .status-dot {
 
@@ -134,60 +198,89 @@ body {
   background: #9ca3af;
 
   flex-shrink: 0;
+
 }
+
 
 .status-dot.listening {
 
   background: #dc2626;
 
-  animation: pulse 1s infinite;
+  animation:
+    pulse 1s infinite;
+
 }
+
 
 .status-dot.success {
 
   background: #16a34a;
+
 }
+
 
 .status-dot.error {
 
   background: #dc2626;
+
 }
+
 
 @keyframes pulse {
 
   0% {
+
     transform: scale(1);
+
     opacity: 1;
+
   }
+
 
   50% {
+
     transform: scale(1.35);
+
     opacity: 0.55;
+
   }
 
+
   100% {
+
     transform: scale(1);
+
     opacity: 1;
+
   }
 
 }
+
 
 .status-card strong {
 
   font-size: 15px;
+
 }
+
 
 .status-card p {
 
-  margin: 4px 0 0;
+  margin:
+    4px
+    0
+    0;
 
   color: #6b7280;
 
   font-size: 13px;
+
 }
 
 
-/* TEXT */
+/* =====================================================
+ * TRANSCRIPT
+ * ===================================================== */
 
 .transcript-card label {
 
@@ -198,17 +291,21 @@ body {
   margin-bottom: 8px;
 
   font-size: 14px;
+
 }
+
 
 textarea {
 
   width: 100%;
 
-  min-height: 130px;
+  min-height: 150px;
 
   resize: vertical;
 
-  border: 1px solid #d1d5db;
+  border:
+    1px solid
+    #d1d5db;
 
   border-radius: 12px;
 
@@ -223,26 +320,35 @@ textarea {
   outline: none;
 
   background: #f9fafb;
+
 }
+
 
 textarea:focus {
 
   border-color: #1a73e8;
+
 }
 
 
-/* BUTTONS */
+/* =====================================================
+ * BUTTONS
+ * ===================================================== */
 
 .controls {
 
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns:
+    1fr
+    1fr;
 
   gap: 12px;
 
   margin-bottom: 12px;
+
 }
+
 
 button {
 
@@ -261,42 +367,55 @@ button {
   transition:
     transform 0.1s ease,
     opacity 0.2s ease;
+
 }
+
 
 button:active {
 
   transform: scale(0.98);
+
 }
+
 
 button:disabled {
 
   cursor: not-allowed;
 
   opacity: 0.45;
+
 }
 
 
-/* START */
+/* =====================================================
+ * START
+ * ===================================================== */
 
 .primary-button {
 
   background: #1a73e8;
 
   color: white;
+
 }
 
 
-/* STOP */
+/* =====================================================
+ * STOP
+ * ===================================================== */
 
 .stop-button {
 
   background: #fee2e2;
 
   color: #b91c1c;
+
 }
 
 
-/* SAVE */
+/* =====================================================
+ * SAVE
+ * ===================================================== */
 
 .save-button {
 
@@ -311,15 +430,20 @@ button:disabled {
   padding: 15px;
 
   font-size: 16px;
+
 }
+
 
 .save-button:not(:disabled):hover {
 
   background: #137333;
+
 }
 
 
-/* WARNING */
+/* =====================================================
+ * WARNING
+ * ===================================================== */
 
 .warning {
 
@@ -333,15 +457,20 @@ button:disabled {
 
   color: #9a3412;
 
-  border: 1px solid #fed7aa;
+  border:
+    1px solid
+    #fed7aa;
 
   font-size: 13px;
 
   line-height: 1.5;
+
 }
 
 
-/* CONNECTION */
+/* =====================================================
+ * CONNECTION
+ * ===================================================== */
 
 .connection-status {
 
@@ -352,16 +481,20 @@ button:disabled {
   color: #6b7280;
 
   font-size: 12px;
+
 }
 
 
 .hidden {
 
   display: none;
+
 }
 
 
-/* MOBILE */
+/* =====================================================
+ * MOBILE
+ * ===================================================== */
 
 @media (max-width: 480px) {
 
@@ -371,11 +504,14 @@ button:disabled {
       20px
       14px
       30px;
+
   }
+
 
   .controls {
 
     grid-template-columns: 1fr;
+
   }
 
 }
