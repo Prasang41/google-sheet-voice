@@ -25,6 +25,10 @@ let currentTarget = null;
 
 let openerWindow = null;
 
+let restartTimer = null;
+
+let recognitionSession = 0;
+
 
 /* =====================================================
  * DOM
@@ -174,7 +178,7 @@ function hideWarning() {
 
 
 /* =====================================================
- * CURRENT CELL
+ * TARGET CELL
  * ===================================================== */
 
 function updateTargetCell(target) {
@@ -222,7 +226,7 @@ function updateTargetCell(target) {
 
 
 /* =====================================================
- * SEND MESSAGE TO APPS SCRIPT
+ * SEND TO APPS SCRIPT
  * ===================================================== */
 
 function sendToAppsScript(message) {
@@ -363,18 +367,13 @@ window.addEventListener(
         true;
 
 
-      /*
-       * Close the voice window after
-       * showing the success message.
-       */
-
       setTimeout(
         function() {
 
           window.close();
 
         },
-        800
+        700
       );
 
 
@@ -421,7 +420,15 @@ window.addEventListener(
 
 
 /* =====================================================
- * CREATE SPEECH RECOGNITION
+ * CREATE NEW RECOGNITION INSTANCE
+ *
+ * IMPORTANT:
+ *
+ * Every time Chrome ends a recognition session,
+ * we create a completely NEW SpeechRecognition object.
+ *
+ * This is much more reliable than calling start()
+ * again on an already-ended recognition object.
  * ===================================================== */
 
 function createRecognition() {
@@ -445,58 +452,72 @@ function createRecognition() {
     );
 
 
-    return false;
+    return null;
 
   }
 
 
-  recognition =
+  const thisSession =
+    recognitionSession;
+
+
+  const newRecognition =
     new SpeechRecognition();
 
 
   /*
-   * IMPORTANT
-   *
-   * continuous = TRUE
-   *
-   * The recognition session is intended to
-   * remain active while the user is listening.
+   * Continuous mode allows Chrome to return
+   * multiple recognition results.
    */
 
-  recognition.continuous =
+  newRecognition.continuous =
     true;
 
 
   /*
-   * Show partial speech while speaking.
+   * Show partial/interim speech.
    */
 
-  recognition.interimResults =
+  newRecognition.interimResults =
     true;
 
 
-  recognition.maxAlternatives =
+  newRecognition.maxAlternatives =
     1;
 
 
   /*
    * Indian English.
    *
-   * For Hindi use:
+   * For Hindi:
    *
-   * recognition.lang = 'hi-IN';
+   * 'hi-IN'
    */
 
-  recognition.lang =
+  newRecognition.lang =
     'en-IN';
 
 
   /* ===================================================
-   * RECOGNITION START
+   * START
    * =================================================== */
 
-  recognition.onstart =
+  newRecognition.onstart =
     function() {
+
+      /*
+       * Ignore an old recognition instance.
+       */
+
+      if (
+        thisSession !==
+        recognitionSession
+      ) {
+
+        return;
+
+      }
+
 
       if (!isListening) {
         return;
@@ -517,7 +538,7 @@ function createRecognition() {
 
       setStatus(
         'Listening...',
-        'Keep speaking. Click Stop when you are finished.',
+        'You can pause and continue speaking. Click Stop when finished.',
         'listening'
       );
 
@@ -525,11 +546,25 @@ function createRecognition() {
 
 
   /* ===================================================
-   * RECOGNITION RESULT
+   * RESULT
    * =================================================== */
 
-  recognition.onresult =
+  newRecognition.onresult =
     function(event) {
+
+      /*
+       * Ignore stale recognition instances.
+       */
+
+      if (
+        thisSession !==
+        recognitionSession
+      ) {
+
+        return;
+
+      }
+
 
       let interimTranscript =
         '';
@@ -566,7 +601,7 @@ function createRecognition() {
 
 
       /*
-       * Store FINAL text permanently.
+       * Preserve completed speech.
        */
 
       if (completedTranscript) {
@@ -578,7 +613,7 @@ function createRecognition() {
 
 
       /*
-       * Show final + current interim text.
+       * Display everything collected so far.
        */
 
       transcriptBox.value =
@@ -591,10 +626,10 @@ function createRecognition() {
 
 
   /* ===================================================
-   * RECOGNITION ERROR
+   * ERROR
    * =================================================== */
 
-  recognition.onerror =
+  newRecognition.onerror =
     function(event) {
 
       console.log(
@@ -604,12 +639,60 @@ function createRecognition() {
 
 
       /*
-       * These errors should not automatically
-       * cancel our listening state.
+       * IMPORTANT:
        *
-       * The onend handler can restart recognition
-       * if the user has not clicked Stop or Save.
+       * Do not stop the logical voice session
+       * for temporary errors.
        */
+
+
+      if (
+        event.error ===
+        'no-speech'
+      ) {
+
+        setStatus(
+          'Listening...',
+          'Pause detected. You can continue speaking.',
+          'listening'
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        event.error ===
+        'network'
+      ) {
+
+        setStatus(
+          'Reconnecting...',
+          'Reconnecting speech recognition...',
+          'listening'
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        event.error ===
+        'aborted'
+      ) {
+
+        /*
+         * onend() will decide whether to restart.
+         */
+
+        return;
+
+      }
+
 
       if (
         event.error ===
@@ -620,21 +703,23 @@ function createRecognition() {
           false;
 
 
+        startButton.disabled =
+          false;
+
+
+        stopButton.disabled =
+          true;
+
+
+        saveButton.disabled =
+          true;
+
+
         setStatus(
           'Microphone permission denied',
           'Allow microphone access and click Start again.',
           'error'
         );
-
-
-        startButton.disabled =
-          false;
-
-        stopButton.disabled =
-          true;
-
-        saveButton.disabled =
-          true;
 
 
         return;
@@ -651,6 +736,14 @@ function createRecognition() {
           false;
 
 
+        startButton.disabled =
+          false;
+
+
+        stopButton.disabled =
+          true;
+
+
         setStatus(
           'Microphone unavailable',
           'Check your microphone and click Start again.',
@@ -658,129 +751,113 @@ function createRecognition() {
         );
 
 
-        startButton.disabled =
-          false;
-
-        stopButton.disabled =
-          true;
-
-
         return;
 
       }
 
 
-      if (
-        event.error ===
-        'network'
-      ) {
-
-        /*
-         * Do not turn off listening.
-         *
-         * onend() will attempt to restart.
-         */
-
-        setStatus(
-          'Reconnecting...',
-          'Speech recognition is reconnecting.'
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        event.error ===
-        'no-speech'
-      ) {
-
-        /*
-         * This is NOT a reason to stop.
-         *
-         * Keep listening.
-         */
-
-        setStatus(
-          'Still listening...',
-          'No speech detected. Keep speaking or click Stop.',
-          'listening'
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        event.error ===
-        'aborted'
-      ) {
-
-        /*
-         * If the user didn't intentionally stop,
-         * onend() can restart it.
-         */
-
-        return;
-
-      }
-
+      /*
+       * Other temporary errors.
+       *
+       * Don't immediately terminate the
+       * user's voice session.
+       */
 
       setStatus(
-        'Recognition issue',
-        `Speech recognition reported: ${event.error}`,
-        'error'
+        'Listening...',
+        'Speech recognition is reconnecting.',
+        'listening'
       );
 
     };
 
 
   /* ===================================================
-   * RECOGNITION END
+   * END
    * =================================================== */
 
-  recognition.onend =
+  newRecognition.onend =
     function() {
 
       /*
-       * IMPORTANT:
+       * This recognition instance is finished.
        *
-       * If the user is STILL listening,
-       * automatically restart recognition.
-       *
-       * This prevents the browser from ending
-       * the user's voice session simply because
-       * one recognition session ended.
+       * But the USER'S voice session may still
+       * be active.
        */
+
 
       if (
         isListening &&
-        !isSaving
+        !isSaving &&
+        thisSession === recognitionSession
       ) {
 
         setStatus(
           'Listening...',
-          'Reconnecting microphone...',
+          'Reconnecting after pause...',
           'listening'
         );
 
 
         /*
-         * Small delay prevents Chrome from
-         * rejecting an immediate restart.
+         * Clear any old timer.
          */
 
-        setTimeout(
-          function() {
+        if (restartTimer) {
 
-            if (
-              isListening &&
-              !isSaving
-            ) {
+          clearTimeout(
+            restartTimer
+          );
+
+        }
+
+
+        /*
+         * Create a completely NEW recognition
+         * instance.
+         */
+
+        restartTimer =
+          setTimeout(
+            function() {
+
+              if (
+                !isListening ||
+                isSaving
+              ) {
+
+                return;
+
+              }
+
+
+              /*
+               * Increment session.
+               *
+               * This makes the old recognition
+               * instance obsolete.
+               */
+
+              recognitionSession++;
+
+
+              /*
+               * Start a NEW recognition object.
+               */
+
+              const nextRecognition =
+                createRecognition();
+
+
+              if (!nextRecognition) {
+                return;
+              }
+
+
+              recognition =
+                nextRecognition;
+
 
               try {
 
@@ -789,17 +866,70 @@ function createRecognition() {
               } catch (error) {
 
                 console.log(
-                  'Recognition restart:',
+                  'Recognition restart failed:',
                   error
                 );
 
+
+                /*
+                 * Try again if the user is
+                 * still listening.
+                 */
+
+                if (
+                  isListening &&
+                  !isSaving
+                ) {
+
+                  setTimeout(
+                    function() {
+
+                      if (
+                        isListening &&
+                        !isSaving
+                      ) {
+
+                        recognitionSession++;
+
+
+                        const retry =
+                          createRecognition();
+
+
+                        if (retry) {
+
+                          recognition =
+                            retry;
+
+
+                          try {
+
+                            recognition.start();
+
+                          } catch (e) {
+
+                            console.log(
+                              'Retry failed:',
+                              e
+                            );
+
+                          }
+
+                        }
+
+                      }
+
+                    },
+                    700
+                  );
+
+                }
+
               }
 
-            }
-
-          },
-          250
-        );
+            },
+            300
+          );
 
 
         return;
@@ -808,8 +938,8 @@ function createRecognition() {
 
 
       /*
-       * If we reach here, the user intentionally
-       * stopped or clicked Save.
+       * If isListening is FALSE,
+       * the user clicked Stop or Save.
        */
 
       startButton.disabled =
@@ -833,8 +963,8 @@ function createRecognition() {
 
 
           setStatus(
-            'Ready to save',
-            'Review the text, then click Save to Google Sheet.'
+            'Stopped',
+            'Review the text or click Save to Google Sheet.'
           );
 
         } else {
@@ -855,7 +985,7 @@ function createRecognition() {
     };
 
 
-  return true;
+  return newRecognition;
 
 }
 
@@ -867,32 +997,27 @@ function createRecognition() {
 function startRecognition() {
 
   /*
-   * If an old recognition object exists,
-   * create a fresh one.
+   * Cancel any previous restart timer.
    */
 
-  if (recognition) {
+  if (restartTimer) {
 
-    try {
+    clearTimeout(
+      restartTimer
+    );
 
-      recognition.abort();
-
-    } catch (error) {
-
-      console.log(error);
-
-    }
+    restartTimer =
+      null;
 
   }
 
 
-  recognition =
-    null;
-
-
   /*
-   * User has explicitly chosen Start.
+   * New logical voice session.
    */
+
+  recognitionSession++;
+
 
   isListening =
     true;
@@ -903,7 +1028,7 @@ function startRecognition() {
 
 
   /*
-   * Clear old text.
+   * Clear previous transcript.
    */
 
   finalTranscript =
@@ -927,12 +1052,14 @@ function startRecognition() {
 
 
   /*
-   * Create recognition.
+   * Create completely new recognition.
    */
 
-  if (
-    !createRecognition()
-  ) {
+  const newRecognition =
+    createRecognition();
+
+
+  if (!newRecognition) {
 
     isListening =
       false;
@@ -940,6 +1067,10 @@ function startRecognition() {
     return;
 
   }
+
+
+  recognition =
+    newRecognition;
 
 
   try {
@@ -986,10 +1117,10 @@ function stopRecognition() {
   /*
    * IMPORTANT:
    *
-   * Change isListening FIRST.
+   * Set isListening = false FIRST.
    *
-   * This prevents onend() from automatically
-   * restarting recognition.
+   * This guarantees that onend() will NOT
+   * create another recognition session.
    */
 
   isListening =
@@ -1000,6 +1131,25 @@ function stopRecognition() {
     false;
 
 
+  recognitionSession++;
+
+
+  /*
+   * Cancel automatic restart timer.
+   */
+
+  if (restartTimer) {
+
+    clearTimeout(
+      restartTimer
+    );
+
+    restartTimer =
+      null;
+
+  }
+
+
   startButton.disabled =
     false;
 
@@ -1008,11 +1158,13 @@ function stopRecognition() {
     true;
 
 
-  const text =
-    finalTranscript.trim();
+  /*
+   * Keep Save available if text exists.
+   */
 
-
-  if (text) {
+  if (
+    finalTranscript.trim()
+  ) {
 
     saveButton.disabled =
       false;
@@ -1038,7 +1190,7 @@ function stopRecognition() {
 
 
   /*
-   * Now actually stop browser recognition.
+   * Stop current recognition.
    */
 
   if (recognition) {
@@ -1101,13 +1253,7 @@ function saveVoiceText() {
 
 
   /*
-   * IMPORTANT:
-   *
-   * Save means:
-   *
-   * 1. Stop listening
-   * 2. Prevent automatic restart
-   * 3. Send text to Apps Script
+   * STOP THE LOGICAL VOICE SESSION FIRST.
    */
 
   isListening =
@@ -1117,6 +1263,29 @@ function saveVoiceText() {
   isSaving =
     true;
 
+
+  recognitionSession++;
+
+
+  /*
+   * Cancel restart timer.
+   */
+
+  if (restartTimer) {
+
+    clearTimeout(
+      restartTimer
+    );
+
+    restartTimer =
+      null;
+
+  }
+
+
+  /*
+   * Disable controls.
+   */
 
   startButton.disabled =
     true;
@@ -1131,7 +1300,7 @@ function saveVoiceText() {
 
 
   /*
-   * Stop recognition if currently active.
+   * Stop recognition.
    */
 
   if (recognition) {
@@ -1159,10 +1328,8 @@ function saveVoiceText() {
 
 
   /*
-   * Send text to Apps Script.
-   *
-   * Apps Script will determine the current
-   * selected cell and write the text there.
+   * Send the accumulated final transcript
+   * to Apps Script.
    */
 
   sendToAppsScript({
@@ -1201,14 +1368,10 @@ saveButton.addEventListener(
 
 
 /* =====================================================
- * START APPLICATION
+ * APPLICATION STARTUP
  * ===================================================== */
 
 (function boot() {
-
-  /*
-   * Browser compatibility.
-   */
 
   if (!SpeechRecognition) {
 
@@ -1227,11 +1390,6 @@ saveButton.addEventListener(
   }
 
 
-  /*
-   * We expect this page to have been opened
-   * from the Google Sheets Apps Script sidebar.
-   */
-
   if (
     window.opener &&
     !window.opener.closed
@@ -1242,9 +1400,8 @@ saveButton.addEventListener(
 
 
     /*
-     * Tell the Apps Script sidebar:
-     *
-     * "The voice application is ready."
+     * Tell Apps Script that the voice
+     * application is ready.
      */
 
     openerWindow.postMessage(
