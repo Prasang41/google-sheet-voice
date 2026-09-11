@@ -341,45 +341,126 @@ window.addEventListener(
      * SAVE SUCCESS
      * ----------------------------------------------- */
 
-    if (
-      message.type ===
-      'VOICE_SAVE_SUCCESS'
-    ) {
+if (
+  message.type ===
+  'VOICE_SAVE_SUCCESS'
+) {
 
-      isSaving =
-        false;
+  isSaving =
+    false;
+
+  isListening =
+    false;
+
+
+  /*
+   * Clear the old recognition session.
+   */
+
+  recognition =
+    null;
+
+
+  /*
+   * Clear any restart timer.
+   */
+
+  if (restartTimer) {
+
+    clearTimeout(
+      restartTimer
+    );
+
+    restartTimer =
+      null;
+
+  }
+
+
+  /*
+   * Show successful save.
+   */
+
+  setStatus(
+    'Saved successfully!',
+    `${message.sheetName}!${message.a1}`,
+    'success'
+  );
+
+
+  /*
+   * Clear the old text so the next
+   * recording starts fresh.
+   */
+
+  finalTranscript =
+    '';
+
+  transcriptBox.value =
+    '';
+
+
+  /*
+   * IMPORTANT:
+   *
+   * DO NOT close the window.
+   *
+   * Keep Voice Input open so the user
+   * can select another cell and record again.
+   */
+
+  startButton.disabled =
+    false;
+
+  stopButton.disabled =
+    true;
+
+  saveButton.disabled =
+    true;
+
+
+  /*
+   * After a short delay, show the user
+   * that the app is ready for another cell.
+   */
+
+  setTimeout(
+    function() {
+
+      /*
+       * Ask the Apps Script sidebar for
+       * the latest selected cell.
+       */
+
+      if (
+        openerWindow &&
+        !openerWindow.closed
+      ) {
+
+        openerWindow.postMessage(
+          {
+            type:
+              'VOICE_REQUEST_SELECTION'
+          },
+          '*'
+        );
+
+      }
 
 
       setStatus(
-        'Saved successfully!',
-        `${message.sheetName}!${message.a1}`,
-        'success'
+        'Ready',
+        'Select another cell and click Start.'
       );
 
-
-      saveButton.disabled =
-        true;
-
-      startButton.disabled =
-        true;
-
-      stopButton.disabled =
-        true;
+    },
+    800
+  );
 
 
-      setTimeout(
-        function() {
+  return;
 
-          window.close();
-
-        },
-        700
-      );
-
-
-      return;
-
-    }
+}
 
 
     /* -----------------------------------------------
