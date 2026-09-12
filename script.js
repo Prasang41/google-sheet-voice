@@ -234,7 +234,7 @@ function sendToAppsScript(message) {
 
     setStatus(
       'Connection lost',
-      'Close this window and open Voice Input again.',
+      'The Google Sheets window is no longer available.',
       'error'
     );
 
@@ -242,6 +242,14 @@ function sendToAppsScript(message) {
 
   }
 
+
+  /*
+   * Keep the existing Apps Script
+   * communication architecture.
+   *
+   * The Apps Script sidebar is the
+   * opener window.
+   */
 
   openerWindow.postMessage(
     message,
@@ -271,6 +279,27 @@ window.addEventListener(
       event.data;
 
 
+    /*
+     * Only accept messages from the
+     * expected GitHub/parent context.
+     *
+     * The initial VOICE_SHEET_INIT is
+     * accepted from the opener and establishes
+     * the communication window.
+     */
+
+    if (
+      GITHUB_ORIGIN &&
+      event.source !== window &&
+      openerWindow &&
+      event.source !== openerWindow
+    ) {
+
+      return;
+
+    }
+
+
     /* -----------------------------------------------
      * INITIAL CONNECTION
      * ----------------------------------------------- */
@@ -287,6 +316,33 @@ window.addEventListener(
       updateTargetCell(
         message.target
       );
+
+
+      /*
+       * Make sure the application starts
+       * in a clean ready state.
+       */
+
+      isListening =
+        false;
+
+      isSaving =
+        false;
+
+      finalTranscript =
+        '';
+
+      transcriptBox.value =
+        '';
+
+      startButton.disabled =
+        false;
+
+      stopButton.disabled =
+        true;
+
+      saveButton.disabled =
+        true;
 
 
       setStatus(
@@ -323,9 +379,52 @@ window.addEventListener(
       }
 
 
+      /*
+       * Always update the target.
+       *
+       * This is important because the employee
+       * may select another cell while the voice
+       * window is open.
+       */
+
       updateTargetCell(
         message.target
       );
+
+
+      /*
+       * If a recording is NOT running and a
+       * save is NOT running, prepare for a
+       * completely new entry.
+       */
+
+      if (
+        !isListening &&
+        !isSaving
+      ) {
+
+        finalTranscript =
+          '';
+
+        transcriptBox.value =
+          '';
+
+        saveButton.disabled =
+          true;
+
+        startButton.disabled =
+          false;
+
+        stopButton.disabled =
+          true;
+
+
+        setStatus(
+          'Ready',
+          'New cell selected. Click Start and speak.'
+        );
+
+      }
 
 
       return;
@@ -346,6 +445,12 @@ window.addEventListener(
         false;
 
 
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT close the window.
+       */
+
       setStatus(
         'Saved successfully!',
         `${message.sheetName}!${message.a1}`,
@@ -357,25 +462,21 @@ window.addEventListener(
         true;
 
       startButton.disabled =
-        true;
+        false;
 
       stopButton.disabled =
         true;
 
 
       /*
-       * Close the voice window after
-       * showing the success message.
+       * Keep the previous text visible
+       * until the employee selects another
+       * cell.
+       *
+       * When the new cell arrives through
+       * VOICE_SELECTION_CHANGED, the transcript
+       * will be cleared automatically.
        */
-
-      setTimeout(
-        function() {
-
-          window.close();
-
-        },
-        800
-      );
 
 
       return;
@@ -402,6 +503,10 @@ window.addEventListener(
 
       startButton.disabled =
         false;
+
+
+      stopButton.disabled =
+        true;
 
 
       setStatus(
@@ -454,22 +559,9 @@ function createRecognition() {
     new SpeechRecognition();
 
 
-  /*
-   * IMPORTANT
-   *
-   * continuous = TRUE
-   *
-   * The recognition session is intended to
-   * remain active while the user is listening.
-   */
-
   recognition.continuous =
     true;
 
-
-  /*
-   * Show partial speech while speaking.
-   */
 
   recognition.interimResults =
     true;
@@ -478,14 +570,6 @@ function createRecognition() {
   recognition.maxAlternatives =
     1;
 
-
-  /*
-   * Indian English.
-   *
-   * For Hindi use:
-   *
-   * recognition.lang = 'hi-IN';
-   */
 
   recognition.lang =
     'en-IN';
@@ -565,10 +649,6 @@ function createRecognition() {
       }
 
 
-      /*
-       * Store FINAL text permanently.
-       */
-
       if (completedTranscript) {
 
         finalTranscript +=
@@ -576,10 +656,6 @@ function createRecognition() {
 
       }
 
-
-      /*
-       * Show final + current interim text.
-       */
 
       transcriptBox.value =
         (
@@ -602,14 +678,6 @@ function createRecognition() {
         event.error
       );
 
-
-      /*
-       * These errors should not automatically
-       * cancel our listening state.
-       *
-       * The onend handler can restart recognition
-       * if the user has not clicked Stop or Save.
-       */
 
       if (
         event.error ===
@@ -675,12 +743,6 @@ function createRecognition() {
         'network'
       ) {
 
-        /*
-         * Do not turn off listening.
-         *
-         * onend() will attempt to restart.
-         */
-
         setStatus(
           'Reconnecting...',
           'Speech recognition is reconnecting.'
@@ -696,12 +758,6 @@ function createRecognition() {
         event.error ===
         'no-speech'
       ) {
-
-        /*
-         * This is NOT a reason to stop.
-         *
-         * Keep listening.
-         */
 
         setStatus(
           'Still listening...',
@@ -719,11 +775,6 @@ function createRecognition() {
         event.error ===
         'aborted'
       ) {
-
-        /*
-         * If the user didn't intentionally stop,
-         * onend() can restart it.
-         */
 
         return;
 
@@ -746,17 +797,6 @@ function createRecognition() {
   recognition.onend =
     function() {
 
-      /*
-       * IMPORTANT:
-       *
-       * If the user is STILL listening,
-       * automatically restart recognition.
-       *
-       * This prevents the browser from ending
-       * the user's voice session simply because
-       * one recognition session ended.
-       */
-
       if (
         isListening &&
         !isSaving
@@ -769,17 +809,13 @@ function createRecognition() {
         );
 
 
-        /*
-         * Small delay prevents Chrome from
-         * rejecting an immediate restart.
-         */
-
         setTimeout(
           function() {
 
             if (
               isListening &&
-              !isSaving
+              !isSaving &&
+              recognition
             ) {
 
               try {
@@ -806,11 +842,6 @@ function createRecognition() {
 
       }
 
-
-      /*
-       * If we reach here, the user intentionally
-       * stopped or clicked Save.
-       */
 
       startButton.disabled =
         false;
@@ -867,8 +898,8 @@ function createRecognition() {
 function startRecognition() {
 
   /*
-   * If an old recognition object exists,
-   * create a fresh one.
+   * Always start with a fresh recognition
+   * session and a fresh transcript.
    */
 
   if (recognition) {
@@ -890,10 +921,6 @@ function startRecognition() {
     null;
 
 
-  /*
-   * User has explicitly chosen Start.
-   */
-
   isListening =
     true;
 
@@ -901,10 +928,6 @@ function startRecognition() {
   isSaving =
     false;
 
-
-  /*
-   * Clear old text.
-   */
 
   finalTranscript =
     '';
@@ -925,10 +948,6 @@ function startRecognition() {
   stopButton.disabled =
     false;
 
-
-  /*
-   * Create recognition.
-   */
 
   if (
     !createRecognition()
@@ -984,12 +1003,8 @@ function startRecognition() {
 function stopRecognition() {
 
   /*
-   * IMPORTANT:
-   *
-   * Change isListening FIRST.
-   *
-   * This prevents onend() from automatically
-   * restarting recognition.
+   * Set this FIRST so onend() does not
+   * automatically restart.
    */
 
   isListening =
@@ -1036,10 +1051,6 @@ function stopRecognition() {
 
   }
 
-
-  /*
-   * Now actually stop browser recognition.
-   */
 
   if (recognition) {
 
@@ -1101,13 +1112,7 @@ function saveVoiceText() {
 
 
   /*
-   * IMPORTANT:
-   *
-   * Save means:
-   *
-   * 1. Stop listening
-   * 2. Prevent automatic restart
-   * 3. Send text to Apps Script
+   * Prevent recognition from restarting.
    */
 
   isListening =
@@ -1129,10 +1134,6 @@ function saveVoiceText() {
   saveButton.disabled =
     true;
 
-
-  /*
-   * Stop recognition if currently active.
-   */
 
   if (recognition) {
 
@@ -1159,21 +1160,43 @@ function saveVoiceText() {
 
 
   /*
-   * Send text to Apps Script.
-   *
-   * Apps Script will determine the current
-   * selected cell and write the text there.
+   * Send the text to the Sidebar.
    */
 
-  sendToAppsScript({
+  const sent =
+    sendToAppsScript({
 
-    type:
-      'VOICE_RESULT',
+      type:
+        'VOICE_RESULT',
 
-    text:
-      text
+      text:
+        text
 
-  });
+    });
+
+
+  /*
+   * If the message could not be sent,
+   * don't leave the application stuck
+   * in the saving state.
+   */
+
+  if (!sent) {
+
+    isSaving =
+      false;
+
+
+    startButton.disabled =
+      false;
+
+    stopButton.disabled =
+      true;
+
+    saveButton.disabled =
+      false;
+
+  }
 
 }
 
@@ -1206,10 +1229,6 @@ saveButton.addEventListener(
 
 (function boot() {
 
-  /*
-   * Browser compatibility.
-   */
-
   if (!SpeechRecognition) {
 
     showWarning(
@@ -1227,11 +1246,6 @@ saveButton.addEventListener(
   }
 
 
-  /*
-   * We expect this page to have been opened
-   * from the Google Sheets Apps Script sidebar.
-   */
-
   if (
     window.opener &&
     !window.opener.closed
@@ -1242,7 +1256,7 @@ saveButton.addEventListener(
 
 
     /*
-     * Tell the Apps Script sidebar:
+     * Tell the Apps Script Sidebar:
      *
      * "The voice application is ready."
      */
