@@ -323,58 +323,9 @@ window.addEventListener(
       }
 
 
-      /*
-       * Update the selected cell.
-       *
-       * IMPORTANT:
-       *
-       * The voice window stays open.
-       * The user can simply select another
-       * Google Sheets cell and continue.
-       */
-
       updateTargetCell(
         message.target
       );
-
-
-      /*
-       * If we are not currently listening
-       * and not currently saving, prepare
-       * the application for the new cell.
-       *
-       * This clears the previous entry so
-       * the next Start creates a completely
-       * new voice entry.
-       */
-
-      if (
-        !isListening &&
-        !isSaving
-      ) {
-
-        finalTranscript =
-          '';
-
-        transcriptBox.value =
-          '';
-
-        saveButton.disabled =
-          true;
-
-        startButton.disabled =
-          false;
-
-        stopButton.disabled =
-          true;
-
-
-        setStatus(
-          'Ready',
-          'New cell selected. Click Start and speak.'
-        );
-
-      }
 
 
       return;
@@ -395,10 +346,6 @@ window.addEventListener(
         false;
 
 
-      /*
-       * Keep the success message visible.
-       */
-
       setStatus(
         'Saved successfully!',
         `${message.sheetName}!${message.a1}`,
@@ -406,34 +353,29 @@ window.addEventListener(
       );
 
 
-      /*
-       * IMPORTANT CHANGE:
-       *
-       * DO NOT close the voice window.
-       *
-       * The user can now select another
-       * cell in Google Sheets and continue.
-       */
-
       saveButton.disabled =
         true;
 
       startButton.disabled =
-        false;
+        true;
 
       stopButton.disabled =
         true;
 
 
       /*
-       * The old code had:
-       *
-       * setTimeout(function() {
-       *   window.close();
-       * }, 800);
-       *
-       * That has intentionally been removed.
+       * Close the voice window after
+       * showing the success message.
        */
+
+      setTimeout(
+        function() {
+
+          window.close();
+
+        },
+        800
+      );
 
 
       return;
@@ -460,10 +402,6 @@ window.addEventListener(
 
       startButton.disabled =
         false;
-
-
-      stopButton.disabled =
-        true;
 
 
       setStatus(
@@ -966,9 +904,6 @@ function startRecognition() {
 
   /*
    * Clear old text.
-   *
-   * This means every new Start is a
-   * completely new entry.
    */
 
   finalTranscript =
